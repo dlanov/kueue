@@ -323,6 +323,17 @@ func TestClusterQueueDeleteClearsMultiKueueWorkloadCounters(t *testing.T) {
 
 	r.Delete(event.TypedDeleteEvent[*kueue.ClusterQueue]{Object: utiltestingapi.MakeClusterQueue("deleted-cq").Obj()})
 
+	deletedCQ := map[string]string{"cluster_queue": "deleted-cq"}
+	if got := testingmetrics.CollectFilteredGaugeVec(metrics.MultiKueueWorkloadsDispatchedTotal, deletedCQ); len(got) != 0 {
+		t.Errorf("deleted-cq dispatched series still present: %v", got)
+	}
+	if got := testingmetrics.CollectFilteredGaugeVec(metrics.MultiKueueWorkloadsAdmittedTotal, deletedCQ); len(got) != 0 {
+		t.Errorf("deleted-cq admitted series still present: %v", got)
+	}
+	if got := testingmetrics.CollectFilteredGaugeVec(metrics.MultiKueueWorkloadsEvictedTotal, deletedCQ); len(got) != 0 {
+		t.Errorf("deleted-cq evicted series still present: %v", got)
+	}
+
 	// Only the series of kept-cq remain: 2 dispatched, 2 admitted, 3 evicted.
 	if got := testutil.CollectAndCount(metrics.MultiKueueWorkloadsDispatchedTotal); got != 2 {
 		t.Errorf("dispatched series = %d, want 2", got)

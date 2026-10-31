@@ -505,6 +505,8 @@ func TestClearMultiKueueWorkloadCounters(t *testing.T) {
 		// per cluster_queue and cluster pair for the evicted counter.
 		wantDispatchedAdmitted int
 		wantEvicted            int
+		// cleared identifies the label pair whose series must be removed.
+		cleared []string
 		// survivor is a cluster_queue and cluster pair that must be left untouched.
 		survivorCQ, survivorWorker string
 	}{
@@ -512,6 +514,7 @@ func TestClearMultiKueueWorkloadCounters(t *testing.T) {
 			clear:                  func() { ClearMultiKueueClusterMetrics("worker1") },
 			wantDispatchedAdmitted: 2,
 			wantEvicted:            4,
+			cleared:                []string{"cluster", "worker1"},
 			survivorCQ:             "cq1",
 			survivorWorker:         "worker2",
 		},
@@ -519,6 +522,7 @@ func TestClearMultiKueueWorkloadCounters(t *testing.T) {
 			clear:                  func() { ClearMultiKueueClusterQueueWorkloadCounters("cq1") },
 			wantDispatchedAdmitted: 2,
 			wantEvicted:            4,
+			cleared:                []string{"cluster_queue", "cq1"},
 			survivorCQ:             "cq2",
 			survivorWorker:         "worker1",
 		},
@@ -528,6 +532,10 @@ func TestClearMultiKueueWorkloadCounters(t *testing.T) {
 			seedMultiKueueWorkloadCounters(t, cqs, workers)
 
 			tc.clear()
+
+			expectFilteredMetricsCount(t, MultiKueueWorkloadsDispatchedTotal, 0, tc.cleared...)
+			expectFilteredMetricsCount(t, MultiKueueWorkloadsAdmittedTotal, 0, tc.cleared...)
+			expectFilteredMetricsCount(t, MultiKueueWorkloadsEvictedTotal, 0, tc.cleared...)
 
 			if got := testutil.CollectAndCount(MultiKueueWorkloadsDispatchedTotal); got != tc.wantDispatchedAdmitted {
 				t.Errorf("unexpected dispatched series count, got %d, want %d", got, tc.wantDispatchedAdmitted)
